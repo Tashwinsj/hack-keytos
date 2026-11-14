@@ -1,0 +1,129 @@
+{
+  "tenantId": "1f1f90cc-0000-4000-8000-000000000001",
+  "collectedAtUtc": "2026-11-13T21:00:00Z",
+  "cba": {
+    "state": "enabled",
+    "certificateUserBindings": [
+      {
+        "x509CertificateField": "PrincipalName",
+        "userProperty": "userPrincipalName",
+        "priority": 0
+      },
+      {
+        "x509CertificateField": "RFC822Name",
+        "userProperty": "onPremisesUserPrincipalName",
+        "priority": 1
+      },
+      {
+        "x509CertificateField": "SubjectKeyIdentifier",
+        "userProperty": "certificateUserIds",
+        "priority": 2
+      }
+    ],
+    "authenticationModeConfiguration": {
+      "x509CertificateAuthenticationDefaultMode": "x509CertificateSingleFactor",
+      "rules": []
+    },
+    "crlValidationConfiguration": {
+      "state": "disabled",
+      "exemptedCertificateAuthoritiesSubjectKeyIdentifiers": [
+        "DEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
+      ]
+    },
+    "certificateAuthorityScopes": [],
+    "includeTargets": [
+      {
+        "targetType": "group",
+        "id": "all_users",
+        "isRegistrationRequired": false
+      }
+    ],
+    "excludeTargets": []
+  },
+  "trustStore": [
+    {
+      "isRootAuthority": true,
+      "issuer": "CN=EntraGoat Rogue CA, O=Contoso Lab, C=US",
+      "subjectKeyIdentifier": "DEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF",
+      "certificateRevocationListUrl": "http://127.0.0.1/rogue.crl",
+      "deltaCertificateRevocationListUrl": null,
+      "certificate": null,
+      "source": "classic",
+      "isPublic": false,
+      "publicKeyInfrastructureIdentifier": null
+    }
+  ],
+  "intuneCertProfiles": [
+    {
+      "id": "profile-spoofable-scep",
+      "displayName": "Wi-Fi SCEP",
+      "type": "SCEP",
+      "oDataType": "#microsoft.graph.windows81SCEPCertificateProfile",
+      "subjectNameFormat": "CN={{DeviceName}}",
+      "sanFormat": [
+        "DNS={{FullyQualifiedDomainName}}",
+        "URI={{SerialNumber}}",
+        "{{IMEI}}"
+      ],
+      "keyUsage": ["digitalSignature"],
+      "ekus": ["1.3.6.1.5.5.7.3.2"],
+      "hasSidStrongMapping": false,
+      "certStore": "user"
+    },
+    {
+      "id": "profile-shared-pkcs",
+      "displayName": "VPN PKCS",
+      "type": "PKCS",
+      "oDataType": "#microsoft.graph.windows81PkcsCertificateProfile",
+      "subjectNameFormat": "CN={{OnPremisesSecurityIdentifier}}",
+      "sanFormat": ["URI={{OnPremisesSecurityIdentifier}}"],
+      "keyUsage": ["digitalSignature", "keyEncipherment"],
+      "ekus": ["1.3.6.1.5.5.7.3.2", "2.5.29.37.0"],
+      "hasSidStrongMapping": true,
+      "certStore": "vpnAndApps"
+    }
+  ],
+  "identities": {
+    "users": [
+      {
+        "id": "10000000-0000-4000-8000-000000000001",
+        "userPrincipalName": "ga@lab.onmicrosoft.com",
+        "displayName": "Jordan Lee",
+        "accountEnabled": true
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000002",
+        "userPrincipalName": "secadmin@lab.onmicrosoft.com",
+        "displayName": "Sam Patel",
+        "accountEnabled": true
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000003",
+        "userPrincipalName": "alex@lab.onmicrosoft.com",
+        "displayName": "Alex Kim",
+        "accountEnabled": true
+      },
+      {
+        "id": "10000000-0000-4000-8000-000000000004",
+        "userPrincipalName": "disabled@lab.onmicrosoft.com",
+        "displayName": "Casey Nguyen",
+        "accountEnabled": false
+      }
+    ],
+    "roleAssignments": [
+      {
+        "roleDefinitionId": "62e90394-69f5-4237-9190-012177145e10",
+        "roleDisplayName": "Global Administrator",
+        "principalId": "10000000-0000-4000-8000-000000000001",
+        "principalUpn": "ga@lab.onmicrosoft.com"
+      },
+      {
+        "roleDefinitionId": "194ae4cb-b126-40b2-bd5b-6091b380977d",
+        "roleDisplayName": "Security Administrator",
+        "principalId": "10000000-0000-4000-8000-000000000002",
+        "principalUpn": "secadmin@lab.onmicrosoft.com"
+      }
+    ]
+  },
+  "collectionNotes": []
+}

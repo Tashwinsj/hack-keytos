@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://escloud.local/findings.schema.json",
+  "title": "ESCloud findings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["generatedAtUtc", "tenantId", "summary", "findings"],
+  "properties": {
+    "generatedAtUtc": { "type": "string" },
+    "tenantId": { "type": "string" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["critical", "high", "medium"],
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0 },
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "severity", "evidence", "blastRadius", "chainsWith", "remediation"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "severity": { "enum": ["Critical", "High", "Medium"] },
+        "evidence": { "type": "object" },
+        "blastRadius": { "$ref": "#/$defs/blast" },
+        "chainsWith": { "type": "array", "items": { "type": "string" } },
+        "remediation": { "$ref": "#/$defs/remediation" }
+      }
+    },
+    "blast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["impersonatableUsers", "impersonatableAdmins"],
+      "properties": {
+        "impersonatableUsers": { "type": "integer", "minimum": 0 },
+        "impersonatableAdmins": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "remediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary"],
+      "properties": {
+        "summary": { "type": "string" },
+        "graphPatch": { "$ref": "#/$defs/patch" },
+        "powershell": { "type": ["string", "null"] },
+        "managedCaNote": { "type": ["string", "null"] }
+      }
+    },
+    "patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "path", "body"],
+      "properties": {
+        "method": { "type": "string" },
+        "path": { "type": "string" },
+        "body": { "type": "object" }
+      }
+    }
+  }
+}

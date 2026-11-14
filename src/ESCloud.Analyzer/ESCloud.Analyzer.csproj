@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>ESCloud.Analyzer</RootNamespace>
+    <AssemblyName>ESCloud.Analyzer</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ESCloud.Contracts\ESCloud.Contracts.csproj" />
+    <ProjectReference Include="..\ESCloud.Remediation\ESCloud.Remediation.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,87 @@
+@page "/compare"
+@inject ReportSession Session
+
+<section class="page-head">
+    <p class="eyebrow">Offline re-scan</p>
+    <h1>Before and after</h1>
+</section>
+
+@if (Session.After is null)
+{
+    <p class="muted">Pass <span class="mono">--after fixed-findings.json</span> to compare a remediated scan. The tenant is not modified.</p>
+}
+else
+{
+    <section class="score">
+        <div>
+            <span>Critical before</span>
+            <strong class="bad">@Session.Before.Summary.Critical</strong>
+        </div>
+        <span class="arrow" aria-hidden="true">→</span>
+        <div>
+            <span>Critical after</span>
+            <strong class="good">@Session.After.Summary.Critical</strong>
+        </div>
+    </section>
+    <p class="note">Removing a classic trusted CA is delete-and-recreate, not a PATCH. This re-scan did not change the tenant.</p>
+
+    <section class="ledger">
+        <h2>Cleared</h2>
+        @if (Cleared().Count == 0)
+        {
+            <p class="muted">Nothing dropped.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var finding in Cleared())
+                {
+                    <li class="@finding.Severity.ToLowerInvariant()">
+                        <span class="mono">@finding.Id</span>
+                        <span>@finding.Title</span>
+                        <span class="secure">Secure</span>
+                    </li>
+                }
+            </ul>
+        }
+        <h2>Still open</h2>
+        @if (Open().Count == 0)
+        {
+            <p class="remain">No findings remain.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var finding in Open())
+                {
+                    <li class="@finding.Severity.ToLowerInvariant()">
+                        <span class="mono">@finding.Id</span>
+                        <span>@finding.Title</span>
+                        <span class="secure open">Open</span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+}
+
+@code {
+    private List<Finding> Cleared() => Diff(open: false);
+    private List<Finding> Open() => Diff(open: true);
+
+    private List<Finding> Diff(bool open)
+    {
+        if (Session.After is null)
+        {
+            return [];
+        }
+
+        var after = Session.After.Items.Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
+        return Session.Before.Items
+            .Where(item => after.Contains(item.Id) == open)
+            .GroupBy(item => item.Id, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .OrderBy(item => item.Id, StringComparer.Ordinal)
+            .ToList();
+    }
+}

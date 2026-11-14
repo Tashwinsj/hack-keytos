@@ -1,0 +1,240 @@
+{
+  "generatedAtUtc": "2026-11-14T03:00:41Z",
+  "tenantId": "848bff09-3604-4511-b4fe-64cb29fb6057",
+  "summary": {
+    "critical": 4,
+    "high": 1,
+    "medium": 0
+  },
+  "findings": [
+    {
+      "id": "CESC-TAKEOVER",
+      "title": "Full tenant takeover via forged CBA certificate",
+      "severity": "Critical",
+      "evidence": {
+        "explanation": "A CA in the trust store can sign a certificate whose PrincipalName is a Global Administrator. Low-affinity binding maps that name to the account, and single-factor mode accepts the certificate with no MFA. Reachable Global Administrators: (none resolved).",
+        "cbaState": "disabled",
+        "bindings": [
+          {
+            "x509CertificateField": "PrincipalName",
+            "userProperty": "userPrincipalName",
+            "priority": 1
+          },
+          {
+            "x509CertificateField": "RFC822Name",
+            "userProperty": "userPrincipalName",
+            "priority": 2
+          }
+        ],
+        "authorities": [
+          {
+            "issuer": "",
+            "isPublic": false,
+            "source": "classic",
+            "reason": "Unscoped non-public issuer. This is the higher-risk case: a CA you may not operate can mint tenant logon certificates."
+          }
+        ],
+        "globalAdministrators": [],
+        "chain": [
+          "CESC-1",
+          "CESC-2",
+          "CESC-3"
+        ]
+      },
+      "blastRadius": {
+        "impersonatableUsers": 8,
+        "impersonatableAdmins": []
+      },
+      "chainsWith": [
+        "CESC-1",
+        "CESC-2",
+        "CESC-3"
+      ],
+      "remediation": {
+        "summary": "CESC-1, CESC-2, and CESC-3 together let a trusted CA mint a PrincipalName certificate that signs in as the Global Administrators in this tenant with no password and no MFA. Close all three: high-affinity binding first, multi-factor mode, and remove or scope the CA.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/x509Certificate",
+          "body": {
+            "@odata.type": "#microsoft.graph.x509CertificateAuthenticationMethodConfiguration",
+            "certificateUserBindings": [
+              {
+                "x509CertificateField": "SubjectKeyIdentifier",
+                "userProperty": "certificateUserIds",
+                "priority": 0
+              },
+              {
+                "x509CertificateField": "SHA1PublicKey",
+                "userProperty": "certificateUserIds",
+                "priority": 1
+              }
+            ],
+            "authenticationModeConfiguration": {
+              "x509CertificateAuthenticationDefaultMode": "x509CertificateMultiFactor",
+              "rules": []
+            }
+          }
+        },
+        "powershell": "$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  certificateUserBindings = @(\n    @{ x509CertificateField = 'SubjectKeyIdentifier'; userProperty = 'certificateUserIds'; priority = 0 }\n    @{ x509CertificateField = 'SHA1PublicKey'; userProperty = 'certificateUserIds'; priority = 1 }\n  )\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body\n$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  authenticationModeConfiguration = @{\n    x509CertificateAuthenticationDefaultMode = 'x509CertificateMultiFactor'\n    rules = @()\n  }\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body",
+        "managedCaNote": "After the binding and mode are fixed, replace the rogue CA with a scoped EZCA CA. The forge step works against a CA whose key you hold. It fails against EZCA because that key is HSM-held and is never exported."
+      }
+    },
+    {
+      "id": "CESC-1",
+      "title": "Low-affinity username binding",
+      "severity": "Critical",
+      "evidence": {
+        "explanation": "priority 1 maps PrincipalName to userPrincipalName; priority 2 maps RFC822Name to userPrincipalName. The best high-affinity binding is priority 3, which loses to the low-affinity binding at priority 1. Lower priority numbers are evaluated first. A reusable name on a trusted certificate selects the user.",
+        "cbaState": "disabled",
+        "bindings": [
+          {
+            "x509CertificateField": "PrincipalName",
+            "userProperty": "userPrincipalName",
+            "priority": 1
+          },
+          {
+            "x509CertificateField": "RFC822Name",
+            "userProperty": "userPrincipalName",
+            "priority": 2
+          }
+        ],
+        "bestHighAffinityPriority": 3,
+        "bestLowAffinityPriority": 1
+      },
+      "blastRadius": {
+        "impersonatableUsers": 8,
+        "impersonatableAdmins": []
+      },
+      "chainsWith": [
+        "CESC-2",
+        "CESC-3"
+      ],
+      "remediation": {
+        "summary": "Put a high-affinity binding first. Map SubjectKeyIdentifier and SHA1PublicKey to certificateUserIds at priorities 0 and 1, populate certificateUserIds on privileged users, and remove PrincipalName or RFC822Name bindings to userPrincipalName for those accounts.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/x509Certificate",
+          "body": {
+            "@odata.type": "#microsoft.graph.x509CertificateAuthenticationMethodConfiguration",
+            "certificateUserBindings": [
+              {
+                "x509CertificateField": "SubjectKeyIdentifier",
+                "userProperty": "certificateUserIds",
+                "priority": 0
+              },
+              {
+                "x509CertificateField": "SHA1PublicKey",
+                "userProperty": "certificateUserIds",
+                "priority": 1
+              }
+            ]
+          }
+        },
+        "powershell": "$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  certificateUserBindings = @(\n    @{ x509CertificateField = 'SubjectKeyIdentifier'; userProperty = 'certificateUserIds'; priority = 0 }\n    @{ x509CertificateField = 'SHA1PublicKey'; userProperty = 'certificateUserIds'; priority = 1 }\n  )\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body"
+      }
+    },
+    {
+      "id": "CESC-2",
+      "title": "Single-factor certificate authentication",
+      "severity": "Critical",
+      "evidence": {
+        "explanation": "The default CBA mode is x509CertificateSingleFactor and no issuerSubject rule requires multi-factor. The certificate alone completes sign-in.",
+        "cbaState": "disabled",
+        "defaultMode": "x509CertificateSingleFactor",
+        "issuersMissingMfaRule": []
+      },
+      "blastRadius": {
+        "impersonatableUsers": 0,
+        "impersonatableAdmins": []
+      },
+      "chainsWith": [
+        "CESC-1",
+        "CESC-3"
+      ],
+      "remediation": {
+        "summary": "Set x509CertificateAuthenticationDefaultMode to x509CertificateMultiFactor, or add an issuerSubject rule that requires multi-factor for every trusted issuer. A certificate alone must not complete sign-in.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/x509Certificate",
+          "body": {
+            "@odata.type": "#microsoft.graph.x509CertificateAuthenticationMethodConfiguration",
+            "authenticationModeConfiguration": {
+              "x509CertificateAuthenticationDefaultMode": "x509CertificateMultiFactor",
+              "rules": []
+            }
+          }
+        },
+        "powershell": "$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  authenticationModeConfiguration = @{\n    x509CertificateAuthenticationDefaultMode = 'x509CertificateMultiFactor'\n    rules = @()\n  }\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body"
+      }
+    },
+    {
+      "id": "CESC-3",
+      "title": "Over-trusted or unscoped certificate authority",
+      "severity": "Critical",
+      "evidence": {
+        "explanation": "1 trusted CA(s) have no certificateAuthorityScopes entry that limits them to a specific group. 1 of them are non-public.",
+        "cbaState": "disabled",
+        "authorities": [
+          {
+            "issuer": "",
+            "isPublic": false,
+            "source": "classic",
+            "reason": "Unscoped non-public issuer. This is the higher-risk case: a CA you may not operate can mint tenant logon certificates."
+          }
+        ]
+      },
+      "blastRadius": {
+        "impersonatableUsers": 0,
+        "impersonatableAdmins": []
+      },
+      "chainsWith": [
+        "CESC-1",
+        "CESC-2"
+      ],
+      "remediation": {
+        "summary": "Remove every CA you do not operate (). The classic trust store does not support update: delete and recreate organization/{id}/certificateBasedAuthConfiguration (fixed id 29728ade-6ae4-4ee9-9103-412912537da5), and do not send the read-only issuer or issuerSki fields. Scope every CA you keep with certificateAuthorityScopes to a specific group, not all_users. Replace 00000000-0000-4000-8000-000000000001 with that group's object id.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/x509Certificate",
+          "body": {
+            "@odata.type": "#microsoft.graph.x509CertificateAuthenticationMethodConfiguration",
+            "certificateAuthorityScopes": []
+          }
+        },
+        "powershell": "$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  certificateAuthorityScopes = @(\n    @{\n      subjectKeyIdentifier = '<ski>'\n      includeTargets = @(\n        @{ id = '<cba-users-group-object-id>'; targetType = 'group'; isRegistrationRequired = $false }\n      )\n    }\n  )\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body\n# Classic CA removal is not a PATCH. Export the keepers, omit the rogue CA, then:\n# Remove-MgOrganizationCertificateBasedAuthConfiguration -OrganizationId $orgId\n# New-MgOrganizationCertificateBasedAuthConfiguration -OrganizationId $orgId -BodyParameter @{ certificateAuthorities = $keepers }",
+        "managedCaNote": "A scoped managed CA such as Keytos EZCA closes CESC-3 by design: the signing key stays in an HSM and is never exported, and certificateAuthorityScopes limit which group that CA can authenticate."
+      }
+    },
+    {
+      "id": "CESC-4",
+      "title": "CRL validation disabled or certificate authorities exempted",
+      "severity": "High",
+      "evidence": {
+        "explanation": "crlValidationConfiguration.state is disabled. Revoked certificates keep working.",
+        "cbaState": "disabled",
+        "crlState": "disabled",
+        "exemptedSubjectKeyIdentifiers": []
+      },
+      "blastRadius": {
+        "impersonatableUsers": 0,
+        "impersonatableAdmins": []
+      },
+      "chainsWith": [],
+      "remediation": {
+        "summary": "Set crlValidationConfiguration.state to enabled, clear exemptedCertificateAuthoritiesSubjectKeyIdentifiers, and publish a CDP the tenant can reach. Revoked certificates must fail sign-in.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/x509Certificate",
+          "body": {
+            "@odata.type": "#microsoft.graph.x509CertificateAuthenticationMethodConfiguration",
+            "crlValidationConfiguration": {
+              "state": "enabled",
+              "exemptedCertificateAuthoritiesSubjectKeyIdentifiers": []
+            }
+          }
+        },
+        "powershell": "$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  crlValidationConfiguration = @{\n    state = 'enabled'\n    exemptedCertificateAuthoritiesSubjectKeyIdentifiers = @()\n  }\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body"
+      }
+    }
+  ]
+}

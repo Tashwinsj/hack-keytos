@@ -1,0 +1,10 @@
+<Router AppAssembly="typeof(ReportHost).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(MainLayout)">
+            <p class="muted">That page is not in the report.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

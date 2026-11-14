@@ -1,0 +1,23 @@
+@inherits LayoutComponentBase
+@inject ReportSession Session
+
+<div class="shell">
+    <header class="top">
+        <div class="brand">
+            <span class="mark" aria-hidden="true"></span>
+            <div>
+                <p class="eyebrow">Certipy, but for the cloud</p>
+                <strong>ESCloud</strong>
+            </div>
+        </div>
+        <p class="tenant mono">@Session.Before.TenantId</p>
+    </header>
+    <nav>
+        <NavLink href="/" Match="NavLinkMatch.All" ActiveClass="active">Findings</NavLink>
+        <NavLink href="graph" ActiveClass="active">Attack path</NavLink>
+        <NavLink href="compare" ActiveClass="active">Before / after</NavLink>
+    </nav>
+    <main>
+        @Body
+    </main>
+</div>

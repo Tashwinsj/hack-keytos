@@ -1,0 +1,13 @@
+bin/
+obj/
+artifacts/
+.vs/
+.idea/
+*.user
+*.pfx
+*.p12
+*.pem
+*.key
+lab/lab-tenant.id
+appsettings.*.local.json
+.DS_Store

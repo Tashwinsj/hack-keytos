@@ -1,0 +1,164 @@
+@page "/graph"
+@inject ReportSession Session
+
+@if (Takeover is null && Cesc1 is null)
+{
+    <section class="clean">
+        <h1>No attack path</h1>
+        <p>This dump does not have the username binding or the takeover chain.</p>
+    </section>
+}
+else
+{
+    <svg class="attack" viewBox="0 0 1100 640" role="img" aria-label="Attack path from a local private key to a signed-in user">
+        <defs>
+            <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="3.5" result="b" />
+                <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+        </defs>
+
+        <path class="flowpath" d="M200 150 H280 M450 150 H530 M790 150 H870 M978 244 V300" filter="url(#glow)" />
+
+        <g class="node amber">
+            <rect x="24" y="48" width="176" height="196" rx="22" />
+            <circle cx="78" cy="130" r="22" />
+            <path d="M98 130h62M140 130v22M128 130v14" />
+            <text x="112" y="196" text-anchor="middle">Private key</text>
+            <text x="112" y="218" text-anchor="middle" class="sub">stays on the laptop</text>
+        </g>
+
+        <g class="node cyan">
+            <rect x="290" y="48" width="160" height="196" rx="22" />
+            <path class="cloud" d="M338 140h50c9 0 16-7 16-15 0-7-5-12-11-14 1-10-7-18-16-18-7 0-13 4-15 10-3-4-7-6-12-6-9 0-16 7-16 16 0 1 0 2 1 3-7 2-12 8-12 15 0 9 7 16 15 16z" />
+            <text x="370" y="190" text-anchor="middle">Entra</text>
+            <text x="370" y="212" text-anchor="middle" class="sub">public CA only</text>
+        </g>
+
+        <g class="node red">
+            <rect x="540" y="48" width="250" height="196" rx="22" />
+            <rect x="642" y="62" width="46" height="62" rx="6" class="paper" />
+            <path d="M652 80h26M652 94h26M652 108h16" class="paper-lines" />
+            <text x="665" y="150" text-anchor="middle" class="leaf">UPN in the SAN</text>
+            <text x="665" y="170" text-anchor="middle" class="leaf">clientAuth EKU</text>
+            <text x="665" y="190" text-anchor="middle" class="leaf">AKI present</text>
+            <text x="665" y="220" text-anchor="middle" class="sub">forged leaf</text>
+        </g>
+
+        <g class="node red">
+            <rect x="880" y="48" width="196" height="196" rx="22" />
+            <path d="M940 118l16 16 36-40" class="tick" />
+            <text x="978" y="176" text-anchor="middle">AKI = SKI</text>
+            <text x="978" y="200" text-anchor="middle" class="sub">@ShortIssuer</text>
+        </g>
+
+        <g class="node red">
+            <rect x="24" y="300" width="500" height="300" rx="22" />
+            <text x="48" y="340">Binding race</text>
+            <text x="48" y="364" class="sub">Lower number wins</text>
+            <foreignObject x="44" y="380" width="460" height="200">
+                <div xmlns="http://www.w3.org/1999/xhtml" class="embed">
+                    @foreach (var binding in WinningBindings)
+                    {
+                        <div class="race-row">
+                            <span class="mono">P@(binding.Priority)</span>
+                            <div class="track"><span class="fill win" style="width:@BarWidth(binding.Priority)%"></span></div>
+                            <span>@binding.X509CertificateField</span>
+                        </div>
+                    }
+                    @if (HighPriority is int high)
+                    {
+                        <div class="race-row dim">
+                            <span class="mono">P@(high)</span>
+                            <div class="track"><span class="fill lose" style="width:@BarWidth(high)%"></span></div>
+                            <span>SubjectKeyIdentifier</span>
+                        </div>
+                    }
+                </div>
+            </foreignObject>
+        </g>
+
+        <g class="node amber">
+            <rect x="548" y="300" width="230" height="300" rx="22" />
+            <text x="572" y="348">Gates</text>
+            <foreignObject x="568" y="370" width="190" height="200">
+                <div xmlns="http://www.w3.org/1999/xhtml" class="embed stack">
+                    <span class="token login">CERT = LOGIN</span>
+                    <span class="token warn">CRL @(string.IsNullOrWhiteSpace(Crl) ? "off" : Crl)</span>
+                    <p class="caption">@(Mode ?? "single-factor")</p>
+                </div>
+            </foreignObject>
+        </g>
+
+        <g class="node red">
+            <rect x="800" y="300" width="276" height="300" rx="22" />
+            <circle cx="938" cy="390" r="22" class="head" />
+            <path d="M890 470c6-36 28-52 48-52s42 16 48 52" class="body" />
+            @if (Admins.Count > 0)
+            {
+                <foreignObject x="820" y="490" width="240" height="90">
+                    <div xmlns="http://www.w3.org/1999/xhtml" class="embed">
+                        <ul class="names">
+                            @foreach (var admin in Admins)
+                            {
+                                <li>@admin</li>
+                            }
+                        </ul>
+                    </div>
+                </foreignObject>
+            }
+            else
+            {
+                <foreignObject x="820" y="470" width="240" height="110">
+                    <div xmlns="http://www.w3.org/1999/xhtml" class="embed people">
+                        <strong>@Users</strong>
+                        <span>enabled users</span>
+                    </div>
+                </foreignObject>
+            }
+        </g>
+    </svg>
+}
+
+@code {
+    private Finding? Takeover => ById(FindingIds.Takeover);
+    private Finding? Cesc1 => ById(FindingIds.Cesc1);
+    private Finding? Cesc2 => ById(FindingIds.Cesc2);
+    private Finding? Cesc3 => ById(FindingIds.Cesc3);
+    private Finding? Cesc4 => ById(FindingIds.Cesc4);
+
+    private Finding? ById(string id) => Session.Before.Items.FirstOrDefault(item => item.Id == id);
+
+    private IEnumerable<CertificateUserBinding> WinningBindings =>
+        (Cesc1?.Evidence.Bindings ?? Takeover?.Evidence.Bindings ?? [])
+        .OrderBy(binding => binding.Priority);
+
+    private int? HighPriority => Cesc1?.Evidence.BestHighAffinityPriority;
+    private string? Mode => Cesc2?.Evidence.DefaultMode;
+    private string? Crl => Cesc4?.Evidence.CrlState;
+
+    private List<string> Admins =>
+        (Takeover?.BlastRadius.ImpersonatableAdmins ?? Cesc1?.BlastRadius.ImpersonatableAdmins ?? [])
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private int Users => Math.Max(
+        Takeover?.BlastRadius.ImpersonatableUsers ?? 0,
+        Cesc1?.BlastRadius.ImpersonatableUsers ?? 0);
+
+    private static int BarWidth(int priority) => Math.Clamp(126 - priority * 30, 16, 100);
+
+    private string ShortIssuer
+    {
+        get
+        {
+            var authority = (Takeover?.Evidence.Authorities ?? Cesc3?.Evidence.Authorities)?.FirstOrDefault();
+            if (authority is null)
+            {
+                return "No CA";
+            }
+
+            return string.IsNullOrWhiteSpace(authority.Issuer) ? "Name not captured" : authority.Issuer;
+        }
+    }
+}

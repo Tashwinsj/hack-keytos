@@ -1,0 +1,26 @@
+@using System.Text.Json
+
+<details class="fix">
+    <summary>Show the fix</summary>
+    <p>@Item.Remediation.Summary</p>
+    @if (!string.IsNullOrWhiteSpace(Item.Remediation.ManagedCaNote))
+    {
+        <p class="note">@Item.Remediation.ManagedCaNote</p>
+    }
+    @if (Item.Remediation.GraphPatch?.Body is not null)
+    {
+        <p class="mono">@Item.Remediation.GraphPatch.Method @Item.Remediation.GraphPatch.Path</p>
+        <pre>@Item.Remediation.GraphPatch.Body.ToJsonString(Pretty)</pre>
+    }
+    @if (!string.IsNullOrWhiteSpace(Item.Remediation.Powershell))
+    {
+        <pre>@Item.Remediation.Powershell</pre>
+    }
+</details>
+
+@code {
+    private static readonly JsonSerializerOptions Pretty = new() { WriteIndented = true };
+
+    [Parameter, EditorRequired]
+    public Finding Item { get; set; } = new();
+}

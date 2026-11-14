@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>ESCloud.Cli</RootNamespace>
+    <AssemblyName>escloud</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ESCloud.Contracts\ESCloud.Contracts.csproj" />
+    <ProjectReference Include="..\ESCloud.Collector\ESCloud.Collector.csproj" />
+    <ProjectReference Include="..\ESCloud.Analyzer\ESCloud.Analyzer.csproj" />
+    <ProjectReference Include="..\ESCloud.Exploit\ESCloud.Exploit.csproj" />
+    <ProjectReference Include="..\ESCloud.Remediation\ESCloud.Remediation.csproj" />
+    <ProjectReference Include="..\ESCloud.Ezca\ESCloud.Ezca.csproj" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,390 @@
+{
+  "generatedAtUtc": "2026-11-13T21:30:00Z",
+  "tenantId": "1f1f90cc-0000-4000-8000-000000000001",
+  "summary": {
+    "critical": 4,
+    "high": 2,
+    "medium": 1
+  },
+  "findings": [
+    {
+      "id": "CESC-TAKEOVER",
+      "title": "Full tenant takeover via forged CBA certificate",
+      "severity": "Critical",
+      "evidence": {
+        "explanation": "A CA in the trust store can sign a certificate whose PrincipalName is a Global Administrator. Low-affinity binding maps that name to the account, and single-factor mode accepts the certificate with no MFA. Reachable Global Administrators: ga@lab.onmicrosoft.com.",
+        "cbaState": "enabled",
+        "bindings": [
+          {
+            "x509CertificateField": "PrincipalName",
+            "userProperty": "userPrincipalName",
+            "priority": 0
+          },
+          {
+            "x509CertificateField": "RFC822Name",
+            "userProperty": "onPremisesUserPrincipalName",
+            "priority": 1
+          }
+        ],
+        "authorities": [
+          {
+            "issuer": "CN=EntraGoat Rogue CA, O=Contoso Lab, C=US",
+            "subjectKeyIdentifier": "DEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF",
+            "isPublic": false,
+            "source": "classic",
+            "reason": "Unscoped non-public issuer. This is the higher-risk case: a CA you may not operate can mint tenant logon certificates."
+          }
+        ],
+        "globalAdministrators": [
+          "ga@lab.onmicrosoft.com"
+        ],
+        "chain": [
+          "CESC-1",
+          "CESC-2",
+          "CESC-3"
+        ]
+      },
+      "blastRadius": {
+        "impersonatableUsers": 3,
+        "impersonatableAdmins": [
+          "Global Administrator: ga@lab.onmicrosoft.com",
+          "Security Administrator: secadmin@lab.onmicrosoft.com"
+        ]
+      },
+      "chainsWith": [
+        "CESC-1",
+        "CESC-2",
+        "CESC-3"
+      ],
+      "remediation": {
+        "summary": "CESC-1, CESC-2, and CESC-3 together let a trusted CA mint a PrincipalName certificate that signs in as ga@lab.onmicrosoft.com with no password and no MFA. Close all three: high-affinity binding first, multi-factor mode, and remove or scope the CA.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/x509Certificate",
+          "body": {
+            "@odata.type": "#microsoft.graph.x509CertificateAuthenticationMethodConfiguration",
+            "certificateUserBindings": [
+              {
+                "x509CertificateField": "SubjectKeyIdentifier",
+                "userProperty": "certificateUserIds",
+                "priority": 0
+              },
+              {
+                "x509CertificateField": "SHA1PublicKey",
+                "userProperty": "certificateUserIds",
+                "priority": 1
+              }
+            ],
+            "authenticationModeConfiguration": {
+              "x509CertificateAuthenticationDefaultMode": "x509CertificateMultiFactor",
+              "rules": []
+            }
+          }
+        },
+        "powershell": "$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  certificateUserBindings = @(\n    @{ x509CertificateField = 'SubjectKeyIdentifier'; userProperty = 'certificateUserIds'; priority = 0 }\n    @{ x509CertificateField = 'SHA1PublicKey'; userProperty = 'certificateUserIds'; priority = 1 }\n  )\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body\n$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  authenticationModeConfiguration = @{\n    x509CertificateAuthenticationDefaultMode = 'x509CertificateMultiFactor'\n    rules = @()\n  }\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body",
+        "managedCaNote": "After the binding and mode are fixed, replace the rogue CA with a scoped EZCA CA. The forge step works against a CA whose key you hold. It fails against EZCA because that key is HSM-held and is never exported."
+      }
+    },
+    {
+      "id": "CESC-1",
+      "title": "Low-affinity username binding",
+      "severity": "Critical",
+      "evidence": {
+        "explanation": "priority 0 maps PrincipalName to userPrincipalName; priority 1 maps RFC822Name to onPremisesUserPrincipalName. The best high-affinity binding is priority 2, which loses to the low-affinity binding at priority 0. Lower priority numbers are evaluated first. A reusable name on a trusted certificate selects the user.",
+        "cbaState": "enabled",
+        "bindings": [
+          {
+            "x509CertificateField": "PrincipalName",
+            "userProperty": "userPrincipalName",
+            "priority": 0
+          },
+          {
+            "x509CertificateField": "RFC822Name",
+            "userProperty": "onPremisesUserPrincipalName",
+            "priority": 1
+          }
+        ],
+        "bestHighAffinityPriority": 2,
+        "bestLowAffinityPriority": 0
+      },
+      "blastRadius": {
+        "impersonatableUsers": 3,
+        "impersonatableAdmins": [
+          "Global Administrator: ga@lab.onmicrosoft.com",
+          "Security Administrator: secadmin@lab.onmicrosoft.com"
+        ]
+      },
+      "chainsWith": [
+        "CESC-2",
+        "CESC-3"
+      ],
+      "remediation": {
+        "summary": "Put a high-affinity binding first. Map SubjectKeyIdentifier and SHA1PublicKey to certificateUserIds at priorities 0 and 1, populate certificateUserIds on privileged users, and remove PrincipalName or RFC822Name bindings to userPrincipalName for those accounts.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/x509Certificate",
+          "body": {
+            "@odata.type": "#microsoft.graph.x509CertificateAuthenticationMethodConfiguration",
+            "certificateUserBindings": [
+              {
+                "x509CertificateField": "SubjectKeyIdentifier",
+                "userProperty": "certificateUserIds",
+                "priority": 0
+              },
+              {
+                "x509CertificateField": "SHA1PublicKey",
+                "userProperty": "certificateUserIds",
+                "priority": 1
+              }
+            ]
+          }
+        },
+        "powershell": "$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  certificateUserBindings = @(\n    @{ x509CertificateField = 'SubjectKeyIdentifier'; userProperty = 'certificateUserIds'; priority = 0 }\n    @{ x509CertificateField = 'SHA1PublicKey'; userProperty = 'certificateUserIds'; priority = 1 }\n  )\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body"
+      }
+    },
+    {
+      "id": "CESC-2",
+      "title": "Single-factor certificate authentication",
+      "severity": "Critical",
+      "evidence": {
+        "explanation": "The default CBA mode is x509CertificateSingleFactor. These issuers have no issuerSubject rule forcing x509CertificateMultiFactor: CN=EntraGoat Rogue CA, O=Contoso Lab, C=US.",
+        "cbaState": "enabled",
+        "defaultMode": "x509CertificateSingleFactor",
+        "issuersMissingMfaRule": [
+          "CN=EntraGoat Rogue CA, O=Contoso Lab, C=US"
+        ]
+      },
+      "blastRadius": {
+        "impersonatableUsers": 0,
+        "impersonatableAdmins": []
+      },
+      "chainsWith": [
+        "CESC-1",
+        "CESC-3"
+      ],
+      "remediation": {
+        "summary": "Set x509CertificateAuthenticationDefaultMode to x509CertificateMultiFactor, or add an issuerSubject rule that requires multi-factor for every trusted issuer. A certificate alone must not complete sign-in.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/x509Certificate",
+          "body": {
+            "@odata.type": "#microsoft.graph.x509CertificateAuthenticationMethodConfiguration",
+            "authenticationModeConfiguration": {
+              "x509CertificateAuthenticationDefaultMode": "x509CertificateMultiFactor",
+              "rules": []
+            }
+          }
+        },
+        "powershell": "$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  authenticationModeConfiguration = @{\n    x509CertificateAuthenticationDefaultMode = 'x509CertificateMultiFactor'\n    rules = @()\n  }\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body"
+      }
+    },
+    {
+      "id": "CESC-3",
+      "title": "Over-trusted or unscoped certificate authority",
+      "severity": "Critical",
+      "evidence": {
+        "explanation": "1 trusted CA(s) have no certificateAuthorityScopes entry that limits them to a specific group. 1 of them are non-public.",
+        "cbaState": "enabled",
+        "authorities": [
+          {
+            "issuer": "CN=EntraGoat Rogue CA, O=Contoso Lab, C=US",
+            "subjectKeyIdentifier": "DEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF",
+            "isPublic": false,
+            "source": "classic",
+            "reason": "Unscoped non-public issuer. This is the higher-risk case: a CA you may not operate can mint tenant logon certificates."
+          }
+        ]
+      },
+      "blastRadius": {
+        "impersonatableUsers": 0,
+        "impersonatableAdmins": []
+      },
+      "chainsWith": [
+        "CESC-1",
+        "CESC-2"
+      ],
+      "remediation": {
+        "summary": "Remove every CA you do not operate (CN=EntraGoat Rogue CA, O=Contoso Lab, C=US). The classic trust store does not support update: delete and recreate organization/{id}/certificateBasedAuthConfiguration (fixed id 29728ade-6ae4-4ee9-9103-412912537da5), and do not send the read-only issuer or issuerSki fields. Scope every CA you keep with certificateAuthorityScopes to a specific group, not all_users. Replace 00000000-0000-4000-8000-000000000001 with that group's object id.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/x509Certificate",
+          "body": {
+            "@odata.type": "#microsoft.graph.x509CertificateAuthenticationMethodConfiguration",
+            "certificateAuthorityScopes": [
+              {
+                "subjectKeyIdentifier": "DEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF",
+                "includeTargets": [
+                  {
+                    "id": "00000000-0000-4000-8000-000000000001",
+                    "targetType": "group",
+                    "isRegistrationRequired": false
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "powershell": "$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  certificateAuthorityScopes = @(\n    @{\n      subjectKeyIdentifier = '<ski>'\n      includeTargets = @(\n        @{ id = '<cba-users-group-object-id>'; targetType = 'group'; isRegistrationRequired = $false }\n      )\n    }\n  )\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body\n# Classic CA removal is not a PATCH. Export the keepers, omit the rogue CA, then:\n# Remove-MgOrganizationCertificateBasedAuthConfiguration -OrganizationId $orgId\n# New-MgOrganizationCertificateBasedAuthConfiguration -OrganizationId $orgId -BodyParameter @{ certificateAuthorities = $keepers }",
+        "managedCaNote": "A scoped managed CA such as Keytos EZCA closes CESC-3 by design: the signing key stays in an HSM and is never exported, and certificateAuthorityScopes limit which group that CA can authenticate."
+      }
+    },
+    {
+      "id": "CESC-4",
+      "title": "CRL validation disabled or certificate authorities exempted",
+      "severity": "High",
+      "evidence": {
+        "explanation": "crlValidationConfiguration.state is disabled. Revoked certificates keep working.",
+        "cbaState": "enabled",
+        "crlState": "disabled",
+        "exemptedSubjectKeyIdentifiers": [
+          "DEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
+        ]
+      },
+      "blastRadius": {
+        "impersonatableUsers": 0,
+        "impersonatableAdmins": []
+      },
+      "chainsWith": [],
+      "remediation": {
+        "summary": "Set crlValidationConfiguration.state to enabled, clear exemptedCertificateAuthoritiesSubjectKeyIdentifiers, and publish a CDP the tenant can reach. Revoked certificates must fail sign-in.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/x509Certificate",
+          "body": {
+            "@odata.type": "#microsoft.graph.x509CertificateAuthenticationMethodConfiguration",
+            "crlValidationConfiguration": {
+              "state": "enabled",
+              "exemptedCertificateAuthoritiesSubjectKeyIdentifiers": []
+            }
+          }
+        },
+        "powershell": "$body = @{\n  '@odata.type' = '#microsoft.graph.x509CertificateAuthenticationMethodConfiguration'\n  crlValidationConfiguration = @{\n    state = 'enabled'\n    exemptedCertificateAuthoritiesSubjectKeyIdentifiers = @()\n  }\n}\nUpdate-MgPolicyAuthenticationMethodPolicyAuthenticationMethodConfiguration -AuthenticationMethodConfigurationId 'x509Certificate' -BodyParameter $body"
+      }
+    },
+    {
+      "id": "CESC-5",
+      "title": "Intune certificate profile with a spoofable subject or SAN",
+      "severity": "High",
+      "evidence": {
+        "explanation": "SCEP or PKCS enrollment builds an identity from device attributes an attacker can influence, without the on-premises security identifier. This is the cloud shape of AD CS ESC1.",
+        "profiles": [
+          {
+            "id": "profile-spoofable-scep",
+            "displayName": "Wi-Fi SCEP",
+            "type": "SCEP",
+            "subjectNameFormat": "CN={{DeviceName}}",
+            "sanFormat": [
+              "DNS={{FullyQualifiedDomainName}}",
+              "URI={{SerialNumber}}",
+              "{{IMEI}}"
+            ],
+            "spoofableVariables": [
+              "{{DeviceName}}",
+              "{{FullyQualifiedDomainName}}",
+              "{{SerialNumber}}",
+              "{{IMEI}}"
+            ],
+            "hasSidStrongMapping": false,
+            "certStore": "user",
+            "keyUsage": [
+              "digitalSignature"
+            ],
+            "ekus": [
+              "1.3.6.1.5.5.7.3.2"
+            ],
+            "reason": "Subject or SAN is built from a spoofable device attribute and strong SID mapping is off."
+          }
+        ]
+      },
+      "blastRadius": {
+        "impersonatableUsers": 0,
+        "impersonatableAdmins": []
+      },
+      "chainsWith": [],
+      "remediation": {
+        "summary": "Stop building the subject or SAN from {{DeviceName}}, {{FullyQualifiedDomainName}}, {{SerialNumber}}, or {{IMEI}}. Put the on-premises security identifier in the subject or SAN and turn on strong name mapping.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/deviceManagement/deviceConfigurations",
+          "body": {
+            "profiles": [
+              {
+                "path": "/deviceManagement/deviceConfigurations/profile-spoofable-scep",
+                "body": {
+                  "id": "profile-spoofable-scep",
+                  "subjectNameFormat": "CN={{OnPremisesSecurityIdentifier}}",
+                  "sanFormat": [
+                    "URI={{OnPremisesSecurityIdentifier}}"
+                  ],
+                  "hasSidStrongMapping": true
+                }
+              }
+            ]
+          }
+        },
+        "powershell": "Update-MgDeviceManagementDeviceConfiguration -DeviceConfigurationId '<profile-id>' -BodyParameter @{ subjectNameFormatString = 'CN={{OnPremisesSecurityIdentifier}}' }"
+      }
+    },
+    {
+      "id": "CESC-6",
+      "title": "Intune certificate in a shared store or with over-broad usage",
+      "severity": "Medium",
+      "evidence": {
+        "explanation": "A certificate any app can use, or one with anyPurpose, serverAuth plus clientAuth, or CA key usage, widens what a stolen device key can do.",
+        "profiles": [
+          {
+            "id": "profile-shared-pkcs",
+            "displayName": "VPN PKCS",
+            "type": "PKCS",
+            "subjectNameFormat": "CN={{OnPremisesSecurityIdentifier}}",
+            "sanFormat": [
+              "URI={{OnPremisesSecurityIdentifier}}"
+            ],
+            "spoofableVariables": [],
+            "hasSidStrongMapping": true,
+            "certStore": "vpnAndApps",
+            "keyUsage": [
+              "digitalSignature",
+              "keyEncipherment"
+            ],
+            "ekus": [
+              "1.3.6.1.5.5.7.3.2",
+              "2.5.29.37.0"
+            ],
+            "reason": "The certificate is in the VPN and apps store and the usage or EKU is over-broad."
+          }
+        ]
+      },
+      "blastRadius": {
+        "impersonatableUsers": 0,
+        "impersonatableAdmins": []
+      },
+      "chainsWith": [],
+      "remediation": {
+        "summary": "Move the certificate out of the VPN and apps store. Keep key usage at digitalSignature and a single clientAuth EKU (1.3.6.1.5.5.7.3.2). Drop anyPurpose and serverAuth.",
+        "graphPatch": {
+          "method": "PATCH",
+          "path": "/deviceManagement/deviceConfigurations",
+          "body": {
+            "profiles": [
+              {
+                "path": "/deviceManagement/deviceConfigurations/profile-shared-pkcs",
+                "body": {
+                  "id": "profile-shared-pkcs",
+                  "certStore": "user",
+                  "keyUsage": [
+                    "digitalSignature"
+                  ],
+                  "ekus": [
+                    "1.3.6.1.5.5.7.3.2"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "powershell": "Update-MgDeviceManagementDeviceConfiguration -DeviceConfigurationId '<profile-id>' -BodyParameter @{ certificateStore = 'user'; keyUsage = 'digitalSignature' }"
+      }
+    }
+  ]
+}

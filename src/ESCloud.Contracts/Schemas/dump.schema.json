@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://escloud.local/dump.schema.json",
+  "title": "ESCloud dump",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tenantId", "collectedAtUtc", "cba", "trustStore", "intuneCertProfiles", "identities"],
+  "properties": {
+    "tenantId": { "type": "string", "minLength": 1 },
+    "collectedAtUtc": { "type": "string" },
+    "cba": { "$ref": "#/$defs/cba" },
+    "trustStore": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/authority" }
+    },
+    "intuneCertProfiles": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/profile" }
+    },
+    "identities": { "$ref": "#/$defs/identities" },
+    "collectionNotes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "cba": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "certificateUserBindings", "authenticationModeConfiguration", "crlValidationConfiguration", "certificateAuthorityScopes"],
+      "properties": {
+        "state": { "type": "string" },
+        "certificateUserBindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/binding" }
+        },
+        "authenticationModeConfiguration": { "$ref": "#/$defs/mode" },
+        "crlValidationConfiguration": { "$ref": "#/$defs/crl" },
+        "certificateAuthorityScopes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/scope" }
+        },
+        "includeTargets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/target" }
+        },
+        "excludeTargets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/target" }
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x509CertificateField", "userProperty", "priority"],
+      "properties": {
+        "x509CertificateField": { "type": "string" },
+        "userProperty": { "type": "string" },
+        "priority": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "mode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x509CertificateAuthenticationDefaultMode", "rules"],
+      "properties": {
+        "x509CertificateAuthenticationDefaultMode": { "type": "string" },
+        "rules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rule" }
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x509CertificateRuleType", "identifier", "x509CertificateAuthenticationMode"],
+      "properties": {
+        "x509CertificateRuleType": { "type": "string" },
+        "identifier": { "type": "string" },
+        "x509CertificateAuthenticationMode": { "type": "string" }
+      }
+    },
+    "crl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "exemptedCertificateAuthoritiesSubjectKeyIdentifiers"],
+      "properties": {
+        "state": { "type": "string" },
+        "exemptedCertificateAuthoritiesSubjectKeyIdentifiers": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subjectKeyIdentifier": { "type": ["string", "null"] },
+        "publicKeyInfrastructureIdentifier": { "type": ["string", "null"] },
+        "includeTargets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/target" }
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetType", "id"],
+      "properties": {
+        "targetType": { "type": "string" },
+        "id": { "type": "string" },
+        "isRegistrationRequired": { "type": ["boolean", "null"] }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["isRootAuthority", "issuer", "source", "isPublic"],
+      "properties": {
+        "isRootAuthority": { "type": "boolean" },
+        "issuer": { "type": "string" },
+        "subjectKeyIdentifier": { "type": ["string", "null"] },
+        "certificateRevocationListUrl": { "type": ["string", "null"] },
+        "deltaCertificateRevocationListUrl": { "type": ["string", "null"] },
+        "certificate": { "type": ["string", "null"] },
+        "source": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "publicKeyInfrastructureIdentifier": { "type": ["string", "null"] }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "hasSidStrongMapping"],
+      "properties": {
+        "id": { "type": "string" },
+        "displayName": { "type": ["string", "null"] },
+        "type": { "type": "string" },
+        "oDataType": { "type": ["string", "null"] },
+        "subjectNameFormat": { "type": ["string", "null"] },
+        "sanFormat": { "type": "array", "items": { "type": "string" } },
+        "keyUsage": { "type": "array", "items": { "type": "string" } },
+        "ekus": { "type": "array", "items": { "type": "string" } },
+        "hasSidStrongMapping": { "type": "boolean" },
+        "certStore": { "type": ["string", "null"] }
+      }
+    },
+    "identities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["users", "roleAssignments"],
+      "properties": {
+        "users": { "type": "array", "items": { "$ref": "#/$defs/user" } },
+        "roleAssignments": { "type": "array", "items": { "$ref": "#/$defs/role" } }
+      }
+    },
+    "user": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "userPrincipalName"],
+      "properties": {
+        "id": { "type": "string" },
+        "userPrincipalName": { "type": "string" },
+        "displayName": { "type": ["string", "null"] },
+        "accountEnabled": { "type": "boolean" }
+      }
+    },
+    "role": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roleDisplayName", "principalUpn"],
+      "properties": {
+        "roleDefinitionId": { "type": ["string", "null"] },
+        "roleDisplayName": { "type": "string" },
+        "principalId": { "type": ["string", "null"] },
+        "principalUpn": { "type": "string" }
+      }
+    }
+  }
+}

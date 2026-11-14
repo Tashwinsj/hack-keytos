@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>ESCloud.Collector</RootNamespace>
+    <AssemblyName>ESCloud.Collector</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ESCloud.Contracts\ESCloud.Contracts.csproj" />
+    <PackageReference Include="Azure.Identity" Version="1.13.2" />
+    <PackageReference Include="Microsoft.Graph" Version="5.77.0" />
+  </ItemGroup>
+</Project>
